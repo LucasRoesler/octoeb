@@ -134,6 +134,8 @@ class GitHubAPI(object):
         resp = self.get('releases')
 
         logger.debug(resp)
+        # raises error if none found
+        resp.raise_for_status()
 
         try:
             releases = resp.json()
@@ -147,13 +149,16 @@ class GitHubAPI(object):
         resp = self.get('releases/latest')
 
         logger.debug(resp)
+        # raises error if none found
+        resp.raise_for_status()
 
         return resp.json()
 
     def latest_prerelease(self):
         prereleases = self.prereleases()
+
         if not prereleases:
-            return None
+            raise Exception('No prereleases found')
 
         return prereleases[0]
 
@@ -257,6 +262,59 @@ class GitHubAPI(object):
             raise
 
         return resp.json()
+
+    def check_merge_status(self, release_name):
+        """
+        Verify that master is ahead of the latest release and for new releases
+        we verify that the release branch has been merged.
+        """
+        release_base_branch = self.release_branch_name(release_name)
+        prod = self.latest_release()
+        prod_tag = prod.get('tag_name')
+        if prod_tag is None:
+            raise Exception('Production release tag not found!')
+
+        c = self.compare(prod_tag, release_base_branch)
+        status = c.get('status')
+
+        if status in ['diverged', 'ahead']:
+            raise Exception(
+                'Release must be merged into master before being released')
+
+        return True
+
+    def release_branch_name(self, release_name):
+        """
+        Determine the base branch for the release.
+
+        Hotfixes the base branch should be master. New releases should
+        are based on a branch of the name `release-<major.version.number>`
+
+        Returns:
+            str
+        """
+        release_major_version = extract_major_version(release_name)
+
+        try:
+            prod = self.latest_release()
+        except:
+            prod = {}
+
+        prod_major_version = extract_major_version(prod.get('tag_name', ''))
+
+        if prod_major_version == release_major_version:
+            return 'master'
+
+        try:
+            prod_next = self.latest_prerelease()
+        except:
+            prod_next = {}
+
+        prod_next_major_version = extract_major_version(
+            prod_next.get('tag_name', ''))
+
+        if prod_next_major_version == release_major_version:
+            return 'release-{}'.format(release_major_version)
 
     def create_release(self, release_name):
 
