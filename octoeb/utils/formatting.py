@@ -9,6 +9,13 @@ import re
 
 logger = logging.getLogger(__name__)
 
+# Regular expression for Semantic Version Number.
+# https://github.com/mojombo/semver/issues/232
+SEMVER_REGEX = ("^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+                "(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
+                "(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?"
+                "(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$")
+
 
 def extract_major_version(version):
     return '.'.join(version.split('.')[:4])
@@ -49,6 +56,9 @@ def validate_ticket_name(name):
 
 def validate_version(version):
     if re.match(r'^(?:\.?\d+){4,5}$', version):
+        return True
+
+    if re.match(SEMVER_REGEX, version):
         return True
 
     raise Exception('Invalid version number {}'.format(version))
