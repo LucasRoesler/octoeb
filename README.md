@@ -97,4 +97,12 @@ Clone, install as above,
 
 Start coding!  Your changes will take immediate effect.
 
+### Testing
+
+To test changes, run:
+
+```
+python setup.py test
+```
+
 Author: Lucas Roesler <lucas@eventboard.io>
